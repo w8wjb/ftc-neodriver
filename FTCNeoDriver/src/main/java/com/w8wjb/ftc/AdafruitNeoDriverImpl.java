@@ -28,7 +28,8 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
 
     public static final I2cAddr I2CADDR_DEFAULT = I2cAddr.create7bit(0x60);
 
-    private static final byte BASE_REGISTER_ADDR = 0x0E;
+    private static final byte SEESAW_BASE_REGISTER_ADDR = 0x00;
+    private static final byte NEO_BASE_REGISTER_ADDR = 0x0E;
 
     /**
      * Number of the N
@@ -70,6 +71,9 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
         this.deviceClient.setLogging(true);
         this.deviceClient.setLoggingTag("NeoDriverI2C");
 
+        // We ask for an initial call back here; that will eventually call internalInitialize()
+        this.registerArmingStateCallback(true);
+
         this.deviceClient.engage();
     }
 
@@ -92,7 +96,7 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
 
     @Override
     public void resetDeviceConfigurationForOpMode() {
-        // no-op
+        sendSeesawReset();
     }
 
     @Override
@@ -129,14 +133,26 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
             return false;
         }
 
-        byte[] bytes = new byte[]{FunctionRegister.PIN.bVal, NEOPIXEL_PIN};
-        this.deviceClient.write(BASE_REGISTER_ADDR, bytes, I2cWaitControl.WRITTEN);
-
-        RobotLog.vv(TAG, "Wrote NEOPIXEL_PIN");
+        sendSeesawReset();
+        setNeopixelPin();
 
         return true;
     }
 
+
+    private void sendSeesawReset() {
+        RobotLog.vv(TAG, "Resetting Seesaw");
+        byte[] bytes = new byte[]{SEESAW_BASE_REGISTER_ADDR, 0x7F, (byte) 0xFF};
+
+        this.deviceClient.write(NEO_BASE_REGISTER_ADDR, bytes, I2cWaitControl.ATOMIC);
+
+        // Wait for the Seesaw code to resetxs
+        try {
+            Thread.sleep(650);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 
     @Override
     public I2cAddr getI2cAddress() {
@@ -149,8 +165,15 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
         this.deviceClient.setI2cAddress(newAddress);
     }
 
+    public void setNeopixelPin() {
+        byte[] bytes = new byte[]{FunctionRegister.PIN.bVal, NEOPIXEL_PIN};
+        this.deviceClient.write(NEO_BASE_REGISTER_ADDR, bytes, I2cWaitControl.WRITTEN);
+        RobotLog.vv(TAG, "Wrote NEOPIXEL_PIN");
+    }
+
     @Override
     public void setNumberOfPixels(int numPixels) {
+
 
         parameters.numPixels = numPixels;
 
@@ -162,7 +185,7 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
 
         byte[] bytes = buffer.array();
         Log.v("NeoDriver", "BUF_LENGTH " + toHex(bytes));
-        deviceClient.write(BASE_REGISTER_ADDR, bytes, I2cWaitControl.WRITTEN);
+        deviceClient.write(NEO_BASE_REGISTER_ADDR, bytes, I2cWaitControl.WRITTEN);
     }
 
     @Override
@@ -185,7 +208,7 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
         buffer.put(colorsToBytes(parameters.bytesPerPixel, parameters.colorOrder, color));
 
         byte[] bytes = buffer.array();
-        deviceClient.write(BASE_REGISTER_ADDR, bytes);
+        deviceClient.write(NEO_BASE_REGISTER_ADDR, bytes);
 
     }
 
@@ -225,7 +248,7 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
         buffer.put(colorData, offset, length);
 
         byte[] bytes = buffer.array();
-        deviceClient.write(BASE_REGISTER_ADDR, bytes);
+        deviceClient.write(NEO_BASE_REGISTER_ADDR, bytes);
     }
 
     @Override
@@ -245,7 +268,7 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
     public void show() {
 
         byte[] bytes = new byte[]{FunctionRegister.SHOW.bVal};
-        deviceClient.write(BASE_REGISTER_ADDR, bytes, I2cWaitControl.WRITTEN);
+        deviceClient.write(NEO_BASE_REGISTER_ADDR, bytes, I2cWaitControl.WRITTEN);
 
     }
 
