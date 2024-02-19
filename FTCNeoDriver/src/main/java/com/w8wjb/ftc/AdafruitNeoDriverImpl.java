@@ -148,7 +148,7 @@ public class AdafruitNeoDriverImpl extends I2cDeviceSynchDeviceWithParameters<I2
 
         // Wait for the Seesaw code to resetxs
         try {
-            Thread.sleep(650);
+            Thread.sleep(200);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }
